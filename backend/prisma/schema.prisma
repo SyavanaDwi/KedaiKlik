@@ -1,0 +1,148 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  ADMIN
+  STAFF
+}
+
+enum Kategori {
+  MAKANAN
+  MINUMAN
+}
+
+enum StatusOrder {
+  MENUNGGU
+  DIKONFIRMASI
+  DISIAPKAN
+  SIAP
+  SELESAI
+  DIBATALKAN
+}
+
+enum StatusPembayaran {
+  SUDAH_DIBAYAR
+  BELUM_DIBAYAR
+}
+
+enum MetodePembayaran {
+  CASH
+  QRIS
+  TRANSFER
+}
+
+model User {
+  id              Int       @id @default(autoincrement())
+  nama            String?
+  email           String    @unique
+  password        String
+  role            Role
+  statusUser      Boolean   @default(true)
+  
+  isLoggedIn      Boolean   @default(false)
+  lastLoginAt     DateTime?
+  lastLogoutAt    DateTime?
+
+  createAt        DateTime  @default(now())
+  updateAt        DateTime  @default(now()) @updatedAt
+
+  pesananDibuat     Order[]
+  totalPembayaran   Pembayaran[]
+  historiPesanan    StatusOrderPesanan[]
+}
+
+model Pelanggan {
+  id              Int      @id @default(autoincrement())
+  nama            String
+  nomer_hp        String   @unique
+  alamat          String
+  statusPelanggan Boolean  @default(true)
+  createAt        DateTime @default(now())
+  updateAt        DateTime @default(now()) @updatedAt
+
+  order  Order[]
+  member Member?
+}
+
+model Member {
+  id           Int       @id @default(autoincrement())
+  pelangganId  Int       @unique
+  pelanggan    Pelanggan @relation(fields: [pelangganId], references: [id], onDelete: Cascade)
+  memberKode   String    @unique
+  diskon       Decimal   @db.Decimal(5, 2)
+  statusMember Boolean   @default(true)
+  joinAt       DateTime  @default(now())
+  updateAt     DateTime  @default(now()) @updatedAt
+}
+
+model Menu {
+  id        Int      @id @default(autoincrement())
+  menu      String   @unique
+  harga     Int
+  kategori  Kategori
+  deskripsi String?
+  image   String?
+  statusMenu Boolean @default(true)
+  createAt  DateTime @default(now())
+  updateAt  DateTime @default(now()) @updatedAt
+
+  pesanMenu PesanMenu[]
+}
+
+model Order {
+  id               Int              @id @default(autoincrement())
+  orderKode        String           @unique
+  pelangganId      Int
+  pelanggan        Pelanggan        @relation(fields: [pelangganId], references: [id])
+  kasirId      Int?
+  createBy         User?             @relation(fields: [kasirId], references: [id])
+  status           StatusOrder      @default(MENUNGGU)
+  statusPembayaran StatusPembayaran @default(BELUM_DIBAYAR)
+  subTotal         Decimal          @db.Decimal(12, 2)
+  diskon           Decimal          @db.Decimal(12, 2)
+  total            Decimal          @db.Decimal(12, 2)
+  createAt         DateTime         @default(now())
+  updateAt         DateTime         @default(now()) @updatedAt
+
+  pesanMenu      PesanMenu[]
+  pembayaran     Pembayaran?
+  historiPesanan StatusOrderPesanan[]
+}
+
+model PesanMenu {
+  id            Int     @id @default(autoincrement())
+  orderId       Int
+  order         Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  menuId        Int
+  menu          Menu    @relation(fields: [menuId], references: [id])
+  jumlah        Int
+  hargaSnapshot Decimal @db.Decimal(12, 2)
+  subTotal      Decimal @db.Decimal(12, 2)
+}
+
+model Pembayaran {
+  id             Int              @id @default(autoincrement())
+  orderId        Int              @unique
+  order          Order            @relation(fields: [orderId], references: [id])
+  jumlah         Decimal          @db.Decimal(12, 2)
+  metode         MetodePembayaran
+  dibayarAt      DateTime         @default(now())
+  penerimaKasirId Int
+  diterimaOleh   User             @relation(fields: [penerimaKasirId], references: [id])
+}
+
+model StatusOrderPesanan {
+  id           Int         @id @default(autoincrement())
+  orderId      Int
+  order        Order       @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  status       StatusOrder
+  diubahOleh   User        @relation(fields: [diubahOlehKasirId], references: [id])
+  diubahOlehKasirId Int
+  createAt     DateTime    @default(now())
+  updateAt     DateTime    @default(now()) @updatedAt
+}
