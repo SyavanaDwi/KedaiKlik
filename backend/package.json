@@ -19,6 +19,7 @@
     "jsonwebtoken": "^9.0.3",
     "multer": "^2.4.0",
     "pg": "^8.23.0",
+    "qrcode": "^1.5.4",
     "xpress": "^2.4.6"
   },
   "devDependencies": {
@@ -27,6 +28,7 @@
     "@types/express": "^5.0.6",
     "@types/multer": "^2.2.0",
     "@types/node": "^26.4.1",
+    "@types/qrcode": "^1.5.6",
     "prisma": "^7.10.0",
     "ts-node": "^10.9.2",
     "ts-node-dev": "^2.0.0",

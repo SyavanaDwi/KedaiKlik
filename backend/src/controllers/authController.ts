@@ -38,7 +38,7 @@ export const register = async (
         password: hashPassword,
         role: role ? (role as Role) : "STAFF",
         statusUser: true,
-        isLoggedIn: false, // Default awal belum login
+        isLoggedIn: false,
       },
     });
 
@@ -82,14 +82,12 @@ export const login = async (
       return res.status(401).json({ message: "Email atau password salah!" });
     }
 
-    // Pastikan user berstatus aktif (statusUser = true)
     if (!user.statusUser) {
       return res
         .status(403)
         .json({ message: "Akun Anda telah dinonaktifkan oleh Admin." });
     }
 
-    // UPDATE STATUS LOGIN KE DATABASE: Set aktif & catat waktu login
     await prisma.user.update({
       where: { id: user.id },
       data: {
@@ -121,14 +119,12 @@ export const login = async (
   }
 };
 
-// TAMBAHAN: Fungsi Logout untuk mencatat jam logout & mengubah status aktif jadi false
 export const logout = async (
   req: Request,
   res: Response,
   next: NextFunction,
 ) => {
   try {
-    // Ambil ID dari user yang sedang login (lewat middleware auth)
     const userId = (req as any).user?.id;
 
     if (userId) {

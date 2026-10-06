@@ -71,127 +71,244 @@ export const createOrder = async (
   next: NextFunction,
 ) => {
   try {
-    const { pelangganId, kasirId, items, diskon = 0 } = req.body;
+    const {
+      pelangganId,
+      kasirId,
+      mejaId,
+      namaTamu,
+      nomerHpTamu,
+      items,
+      diskon = 0,
+    } = req.body;
 
-    if (
-      !pelangganId ||
-      !kasirId ||
-      !Array.isArray(items) ||
-      items.length === 0
-    ) {
+    if (!Array.isArray(items) || items.length === 0) {
       return res.status(400).json({
-        message: "Pelanggan ID, kasir ID, dan items pesanan wajib diisi!",
+        message: "Items pesanan wajib diisi!",
       });
     }
 
-    const parsedPelangganId = Number(pelangganId);
-    const parsedKasirId = Number(kasirId);
+    const isGuestOrder = !pelangganId && !kasirId;
 
-    if (isNaN(parsedPelangganId) || isNaN(parsedKasirId)) {
-      return res.status(400).json({
-        message: "Pelanggan ID dan Kasir ID harus berupa angka valid!",
-      });
-    }
-
-    const pelanggan = await prisma.pelanggan.findUnique({
-      where: { id: parsedPelangganId },
-    });
-
-    if (!pelanggan) {
-      return res.status(404).json({
-        message: `Pelanggan dengan ID ${parsedPelangganId} tidak ditemukan`,
-      });
-    }
-
-    if (pelanggan.statusPelanggan === false) {
-      return res.status(400).json({
-        message:
-          "Pelanggan ini sedang nonaktif/blacklist dan tidak dapat membuat orderan",
-      });
-    }
-
-    const kasir = await prisma.user.findUnique({
-      where: { id: parsedKasirId },
-    });
-
-    if (!kasir) {
-      return res.status(404).json({
-        message: `Kasir dengan ID ${parsedKasirId} tidak ditemukan`,
-      });
-    }
-
-    for (const item of items) {
-      if (!item.menuId || !item.jumlah || item.harga === undefined) {
+    if (isGuestOrder) {
+      if (!mejaId || !namaTamu) {
         return res.status(400).json({
-          message: "Setiap item wajib memiliki menuId, jumlah, dan harga!",
+          message: "Meja dan nama wajib diisi!",
+        });
+      }
+    } else {
+      if (!pelangganId || !kasirId) {
+        return res.status(400).json({
+          message: "Pelanggan ID dan kasir ID wajib diisi!",
+        });
+      }
+    }
+
+    let parsedMejaId: number | undefined;
+    let parsedPelangganId: number | undefined;
+    let parsedKasirId: number | undefined;
+
+    if (mejaId !== undefined) {
+      parsedMejaId = Number(mejaId);
+
+      if (isNaN(parsedMejaId)) {
+        return res.status(400).json({
+          message: "Meja ID harus berupa angka valid!",
         });
       }
 
-      const menuStatus = await prisma.menu.findUnique({
-        where: { id: Number(item.menuId) },
+      const meja = await prisma.meja.findUnique({
+        where: { id: parsedMejaId },
       });
 
-      if (!menuStatus || menuStatus.statusMenu === false) {
+      if (!meja) {
+        return res.status(404).json({
+          message: "Meja tidak ditemukan",
+        });
+      }
+
+      if (!meja.statusMeja) {
         return res.status(400).json({
-          message: `Menu ${menuStatus?.menu || item.menuId} sedang tidak tersedia/habis`,
+          message: "Meja sedang tidak aktif",
+        });
+      }
+    }
+
+    if (pelangganId !== undefined) {
+      parsedPelangganId = Number(pelangganId);
+
+      if (isNaN(parsedPelangganId)) {
+        return res.status(400).json({
+          message: "Pelanggan ID harus berupa angka valid!",
+        });
+      }
+
+      const pelanggan = await prisma.pelanggan.findUnique({
+        where: { id: parsedPelangganId },
+      });
+
+      if (!pelanggan) {
+        return res.status(404).json({
+          message: `Pelanggan dengan ID ${parsedPelangganId} tidak ditemukan`,
+        });
+      }
+
+      if (!pelanggan.statusPelanggan) {
+        return res.status(400).json({
+          message:
+            "Pelanggan ini sedang nonaktif/blacklist dan tidak dapat membuat orderan",
+        });
+      }
+    }
+
+    if (kasirId !== undefined) {
+      parsedKasirId = Number(kasirId);
+
+      if (isNaN(parsedKasirId)) {
+        return res.status(400).json({
+          message: "Kasir ID harus berupa angka valid!",
+        });
+      }
+
+      const kasir = await prisma.user.findUnique({
+        where: { id: parsedKasirId },
+      });
+
+      if (!kasir) {
+        return res.status(404).json({
+          message: `Kasir dengan ID ${parsedKasirId} tidak ditemukan`,
         });
       }
     }
 
     let subTotal = 0;
+    const pesanMenuData = [];
 
-    const pesanMenuData = items.map(
-      (item: { menuId: number; jumlah: number; harga: number }) => {
-        const itemSubTotal = Number(item.jumlah) * Number(item.harga);
-        subTotal += itemSubTotal;
+    for (const item of items) {
+      if (!item.menuId || !item.jumlah) {
+        return res.status(400).json({
+          message: "Setiap item wajib memiliki menuId dan jumlah!",
+        });
+      }
 
-        return {
-          menuId: Number(item.menuId),
-          jumlah: Number(item.jumlah),
-          hargaSnapshot: Number(item.harga),
-          subTotal: itemSubTotal,
-        };
-      },
-    );
+      const menu = await prisma.menu.findUnique({
+        where: {
+          id: Number(item.menuId),
+        },
+      });
+
+      if (!menu) {
+        return res.status(404).json({
+          message: `Menu dengan ID ${item.menuId} tidak ditemukan`,
+        });
+      }
+
+      if (!menu.statusMenu) {
+        return res.status(400).json({
+          message: `Menu ${menu.menu} sedang tidak tersedia/habis`,
+        });
+      }
+
+      const jumlah = Number(item.jumlah);
+      const harga = Number(menu.harga);
+      const itemSubTotal = harga * jumlah;
+
+      subTotal += itemSubTotal;
+
+      pesanMenuData.push({
+        menuId: menu.id,
+        jumlah,
+        hargaSnapshot: harga,
+        subTotal: itemSubTotal,
+      });
+    }
 
     const parsedDiskon = Number(diskon) || 0;
     const total = Math.max(0, subTotal - parsedDiskon);
+
     const orderKode = `ORD-${Date.now()}`;
 
     const newOrder = await prisma.order.create({
       data: {
         orderKode,
-        subTotal: Number(subTotal),
+
+        ...(parsedMejaId !== undefined && {
+          meja: {
+            connect: {
+              id: parsedMejaId,
+            },
+          },
+        }),
+
+        ...(parsedPelangganId !== undefined && {
+          pelanggan: {
+            connect: {
+              id: parsedPelangganId,
+            },
+          },
+        }),
+
+        ...(namaTamu && {
+          namaTamu,
+        }),
+
+        ...(nomerHpTamu && {
+          nomerHpTamu,
+        }),
+
+        ...(parsedKasirId !== undefined && {
+          createBy: {
+            connect: {
+              id: parsedKasirId,
+            },
+          },
+        }),
+
+        subTotal,
         diskon: parsedDiskon,
-        total: Number(total),
-        pelanggan: {
-          connect: { id: parsedPelangganId },
-        },
-        createBy: {
-          connect: { id: parsedKasirId },
-        },
+        total,
+
         pesanMenu: {
           create: pesanMenuData,
         },
-        historiPesanan: {
-          create: {
-            status: "MENUNGGU",
-            diubahOleh: {
-              connect: { id: parsedKasirId },
+
+        ...(parsedKasirId !== undefined && {
+          historiPesanan: {
+            create: {
+              status: "MENUNGGU",
+              diubahOleh: {
+                connect: {
+                  id: parsedKasirId,
+                },
+              },
             },
           },
-        },
+        }),
       },
+
       include: {
+        meja: true,
         pelanggan: true,
-        pesanMenu: { include: { menu: true } },
+        createBy: {
+          select: {
+            id: true,
+            nama: true,
+            email: true,
+            role: true,
+          },
+        },
+        pesanMenu: {
+          include: {
+            menu: true,
+          },
+        },
         historiPesanan: true,
       },
     });
 
-    return res
-      .status(201)
-      .json({ message: "Order berhasil dibuat", data: newOrder });
+    return res.status(201).json({
+      message: "Order berhasil dibuat",
+      data: newOrder,
+    });
   } catch (error: any) {
     console.error("--- PRISMA ERROR DETAIL ---", error);
     next(error);

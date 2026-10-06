@@ -11,13 +11,13 @@ import { roleAdmin } from "../middlewares/roleMiddleware";
 import { upload } from "../lib/multer";
 
 const router = Router();
-router.use(authentication);
 
 router.get("/", getAllMenu);
 router.get("/:id", getMenuByid);
-router.put("/:id", updateMenu);
 
-router.post("/", upload.single("image"), createMenu);
-router.delete("/:id", roleAdmin, deleteMenu);
+router.put("/:id", authentication, updateMenu);
+
+router.post("/", authentication, upload.single("image"), createMenu);
+router.delete("/:id", authentication, roleAdmin, deleteMenu);
 
 export default router;

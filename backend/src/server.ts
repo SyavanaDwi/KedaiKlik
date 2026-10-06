@@ -1,7 +1,7 @@
 import express, { Response, Request } from "express";
 import indexRoute from "./routes/indexRoute";
 import { logMiddleware } from "./middlewares/logMiddleware";
-import { apiKeyMiddleware } from "./middlewares/apiKeyMiddleware";
+// import { apiKeyMiddleware } from "./middlewares/apiKeyMiddleware";
 import { errorHandler } from "./middlewares/errorHandler";
 import cors from "cors";
 
@@ -10,7 +10,7 @@ const port = 3000;
 
 app.use(
   cors({
-    origin: "http://localhost:5173",
+    origin: ["http://localhost:5173", "http://localhost:5174"],
     credentials: true,
   }),
 );
@@ -20,6 +20,6 @@ app.use(logMiddleware);
 app.use("/api", indexRoute);
 app.use(errorHandler);
 
-app.listen(port, () => {
+app.listen(port, "0.0.0.0", () => {
   console.log(`Server Express berjalan di http://localhost:${port}`);
 });

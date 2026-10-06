@@ -118,7 +118,6 @@ export const updateMenu = async (
     const { menu, harga, kategori, deskripsi, statusMenu } = req.body;
     const user = (req as any).user;
 
-    // Proteksi role Staff jika middleware menyertakan req.user
     if (user && user.role === "STAFF") {
       if (
         menu !== undefined ||

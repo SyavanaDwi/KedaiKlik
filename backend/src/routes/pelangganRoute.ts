@@ -10,11 +10,10 @@ import { authentication } from "../middlewares/authMiddleware";
 
 const router = Router();
 
-router.use(authentication);
-
-router.post("/", createPelanggan);
 router.get("/", getAllPelanggan);
-router.get("/:id", getPelangganById);
-router.put("/:id", updatePelanggan);
-router.patch("/:id/blacklist", toggleBlacklistPelanggan);
+
+router.post("/", authentication, createPelanggan);
+router.get("/:id", authentication, getPelangganById);
+router.put("/:id", authentication, updatePelanggan);
+router.patch("/:id/blacklist", authentication, toggleBlacklistPelanggan);
 export default router;
